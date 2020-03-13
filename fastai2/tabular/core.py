@@ -2,7 +2,7 @@
 
 __all__ = ['make_date', 'add_datepart', 'add_elapsed_times', 'cont_cat_split', 'Tabular', 'TabularPandas',
            'TabularProc', 'Categorify', 'setups', 'encodes', 'decodes', 'NormalizeTab', 'setups', 'encodes', 'decodes',
-           'FillStrategy', 'FillMissing', 'ReadTabBatch', 'TabDataLoader', 'encodes', 'decodes']
+           'FillStrategy', 'FillMissing', 'ReadTabBatch', 'TabDataLoader', 'encodes', 'decodes', 'setups', 'encodes']
 
 # Cell
 from ..torch_basics import *
@@ -103,9 +103,11 @@ class Tabular(CollBase, GetAttr, FilteredBase):
     "A `DataFrame` wrapper that knows which cols are cont/cat/y, and returns rows in `__getitem__`"
     _default,with_cont='procs',True
     def __init__(self, df, procs=None, cat_names=None, cont_names=None, y_names=None, block_y=None, splits=None,
-                 do_setup=True, device=None):
-        if splits is None: splits=[range_of(df)]
-        df = df.iloc[sum(splits, [])].copy()
+                 do_setup=True, device=None, inplace=False):
+        if inplace and splits is not None:
+            warn("Using inplace with splits will trigger a pandas error. Set `pd.options.mode.chained_assignment=None` to avoid it.")
+        if not inplace: df = df.copy()
+        if splits is not None: df = df.iloc[sum(splits, [])]
         self.dataloaders = delegates(self._dl_type.__init__)(self.dataloaders)
         super().__init__(df)
 
@@ -119,7 +121,7 @@ class Tabular(CollBase, GetAttr, FilteredBase):
             if callable(block_y): block_y = block_y()
             procs = L(procs) + block_y.type_tfms
         self.cat_names,self.cont_names,self.procs = L(cat_names),L(cont_names),Pipeline(procs)
-        self.split = len(splits[0])
+        self.split = len(df) if splits is None else len(splits[0])
         if do_setup: self.setup()
 
     def new(self, df):
@@ -316,3 +318,13 @@ def encodes(self, to:Tabular): return to
 def decodes(self, to:Tabular):
     to.transform(to.y_names, lambda c: c==1)
     return to
+
+# Cell
+@RegressionSetup
+def setups(self, to:Tabular):
+    if self.c is not None: return
+    self.c = len(to.y_names)
+    return to
+
+@RegressionSetup
+def encodes(self, to:Tabular): return to
