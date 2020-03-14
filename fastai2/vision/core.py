@@ -72,8 +72,11 @@ def resize_max(x: Image.Image, resample=0, max_px=None, max_h=None, max_w=None):
 # Cell
 def load_image(fn, mode=None, **kwargs):
     "Open and load a `PIL.Image` and convert to `mode`"
-    #im = Image.fromarray(pydicom.filereader.dcmread(fn).pixel_array) if fn.split(".")[-1] == "dcm" else
-    im = Image.open(fn, **kwargs)
+    if str(fn).split(".")[-1] == "dcm":
+        with pydicom.dcmread(str(fn)) as ds:
+            im = Image.fromarray(ds.pixel_array)
+    else:
+        im = Image.open(fn, **kwargs)
     im.load()
     im = im._new(im.im)
     return im.convert(mode) if mode else im
