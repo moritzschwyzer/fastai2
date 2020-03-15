@@ -26,13 +26,9 @@ def get_dicom_files(path, recurse=True, folders=None):
     return get_files(path, extensions=[".dcm"], recurse=recurse, folders=folders)
 
 # Cell
-def dcmread(fn:(Path,str), force = False, mode=None):
-    "Open and load a `DICOM` file as a `PIL.Image` and convert to `mode`"
-    with pydicom.dcmread(str(fn), force) as ds:
-        im = Image.fromarray(ds.pixel_array)
-    im.load()
-    im = im._new(im.im)
-    return im.convert(mode) if mode else im
+def dcmread(fn:(Path,str), force = False):
+    "Open a `DICOM` file"
+    return pydicom.dcmread(str(fn), force)
 
 # Cell
 class TensorDicom(TensorImage): _show_args = {'cmap':'gray'}
@@ -41,9 +37,12 @@ class TensorDicom(TensorImage): _show_args = {'cmap':'gray'}
 class PILDicom(PILBase):
     _open_args,_tensor_cls,_show_args = {},TensorDicom,TensorDicom._show_args
     @classmethod
-    def create(cls, fn:(Path,str))->None:
-        "Open a `DICOM file` from path `fn`"
-        return cls(dcmread(fn))
+    def create(cls, fn:(Path,str), mode=None)->None:
+        "Open a `DICOM file` from path `fn` and load it as a `PIL Image`"
+        im = Image.fromarray(dcmread(fn).pixel_array)
+        im.load()
+        im = im._new(im.im)
+        return cls(im.convert(mode) if mode else im)
 
 PILDicom._tensor_cls = TensorDicom
 
